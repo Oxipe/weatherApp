@@ -1,0 +1,175 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8" />
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
+    <script src="https://unpkg.com/vue-chartjs/dist/vue-chartjs.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.js"></script>
+
+
+    <script src="country.js"></script>
+    <script src="cityList.js"></script>
+
+    <link rel="stylesheet" href="reset.css" type="text/css" />
+    <link rel="stylesheet" href="animation.css" type="text/css" />
+    <link rel="stylesheet" href="style.css" type="text/css" />
+
+
+    <title>My Weather App</title>
+</head>
+<body>
+
+    <div id="weatherApp">
+        <!--Header-->
+        <header class="header">
+
+            <h1>My Weather Forecast</h1>
+            <div class="search_wrapper">
+
+                <input type="text" class="search_box" id="searchBox" placeholder="City..." v-on:keyup="searchCity()" v-on:keyup.enter="fetchCity()" />
+                <ul class="search_dropdown" id="searchDropDown" v-if="citySearch.length > 0" v-on:searchCity>
+                    <li v-for="city in citySearch" v-on:click="selectCity(city.name)"><a href="#">{{city.name}}</a></li>
+                </ul>
+
+                <button class="search_button" v-on:click="fetchCity">Search</button>
+
+            </div>
+        </header>
+
+        <!--Main Container-->
+
+        <div v-if="!isLoaded" class="loadingWrapper" id="loadingWrapper">
+            <div class="loading">
+
+            </div>
+        </div>
+
+        <div id="mainContainer" class="main_container">
+
+            <div class="location">
+                <div class="current_city">
+                    <img v-bind:src="flag" alt="">
+
+                    <h2 class="city_name"> {{cityName}} </h2>
+
+                </div>
+            </div>
+
+            <divider></divider>
+
+            <div class="option_bar">
+                <div class="units">
+                    <button class="unit_button" v-on:click="celcius = true, fahrenheit = false, checkFilter()">&deg;C</button>
+                    <button class="unit_button" v-on:click="celcius = false, fahrenheit = true">&deg;F</button>
+                </div>
+
+                <div class="multiple_forcasts">
+                    <div class="forcast_days">
+                        <input type="radio" v-on:click="getNumberOfDays(1)" name="days" checked />
+                        <label>1 day forcast</label>
+                    </div>
+                    <div v-if="weather.list.length >= 24" class="forcast_days">
+                        <input type="radio" v-on:click="getNumberOfDays(3)" name="days" />
+                        <label>3 day forcast</label>
+                    </div>
+                    <div v-if="weather.list.length === 40" class="forcast_days">
+                        <input type="radio" v-on:click="getNumberOfDays(5)" name="days" />
+                        <label>5 day forcast</label>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="weather_wrapper">
+                <div class="current">
+                    <div class="current_weather">
+
+                        <div class="weather_icon">
+                            <img v-bind:src="weatherIcon" alt="" />
+                        </div>
+
+                        <divider></divider>
+
+                        <div class="current_forcast">
+
+                            <div class="current_time_wrapper">
+                                <p class="current_time" v-html="getTime(weather.list[0].dt)"></p>
+
+                            </div>
+
+                            <divider></divider>
+
+                            <p class="label">Current:</p>
+                            <p class="current_data" v-if="celcius" v-html="calculateCelcius(weather.list[0].main.temp)"></p>
+                            <p class="current_data" v-if="fahrenheit" v-html="calculateFahrenheit(weather.list[0].main.temp)"></p>
+
+                            <p class="label">Maximum:</p>
+                            <p class="current_data" v-if="celcius" v-html="calculateCelcius(weather.list[0].main.temp_max)"></p>
+                            <p class="current_data" v-if="fahrenheit" v-html="calculateFahrenheit(weather.list[0].main.temp_max)"></p>
+
+                            <p class="label">Minimum:</p>
+                            <p class="current_data" v-if="celcius" v-html="calculateCelcius(weather.list[0].main.temp_min)"></p>
+                            <p class="current_data" v-if="fahrenheit" v-html="calculateFahrenheit(weather.list[0].main.temp_min)"></p>
+
+                            <divider></divider>
+
+                            <p class="label">Humidity:</p>
+                            <p class="current_data" v-html="insertPercentage(weather.list[0].main.humidity)"></p>
+
+                            <p class="label">Pressure:</p>
+                            <p class="current_data" v-html="insertHectopascal(weather.list[0].main.pressure)"></p>
+
+                            <divider></divider>
+
+                            <p class="label">Wind Speed:</p>
+                            <p class="current_data" v-if="celcius" v-html="insertWindSpeed(weather.list[0].wind.speed)"></p>
+                            <p class="current_data" v-if="fahrenheit" v-html="calculateFeetPerSecond(weather.list[0].wind.speed)"></p>
+
+                            <p class="label">Wind Direction:</p>
+                            <div class="current_data">
+                                <img id="windIcon" src="images/weather_icons/wind_direction.png" alt="" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="forcast">
+                    <div class="chartFilter" id="chartFilter">
+                        <div class="chartOption">
+                            <input id="temperature" v-on:click="checkFilter('temperature')" name="chart" type="radio" />
+                            <label class="chart_label">Temperature</label>
+                        </div>
+                        <div class="chartOption">
+                            <input id="rain" v-on:click="checkFilter('rain')" name="chart" type="radio" />
+                            <label class="chart_label">Rain</label>
+                        </div>
+                        <div class="chartOption">
+                            <input id="humidity" v-on:click="checkFilter('humidity')" name="chart" type="radio" />
+                            <label class="chart_label">Humidity</label>
+                        </div>
+                        <div class="chartOption">
+                            <input id="pressure" v-on:click="checkFilter('pressure')" name="chart" type="radio" />
+                            <label class="chart_label">Pressure</label>
+                        </div>
+                        <div class="chartOption">
+                            <input id="windSpeed" v-on:click="checkFilter('wind_speed')" name="chart" type="radio" />
+                            <label class="chart_label">Wind Speed</label>
+                        </div>
+                    </div>
+
+                    <div class="chart_wrapper">
+                        <canvas id="myChart" class="forcastChart" v-html="checkFilter()"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="main.js"></script>
+
+</body>
+</html>
